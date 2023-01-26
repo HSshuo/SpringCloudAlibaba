@@ -6,14 +6,12 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * @author SHshuo
- * @data 2023/1/18--21:09
- * Nacos Server 使用外部运行
- * 基于服务注册中心演示
+ * @data 2023/1/18--22:21
  */
 @SpringBootApplication
 @EnableDiscoveryClient
-public class PaymentMain {
+public class ConfigClientMain {
     public static void main(String[] args) {
-        SpringApplication.run(PaymentMain.class, args);
+        SpringApplication.run(ConfigClientMain.class, args);
     }
 }

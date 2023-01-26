@@ -11,6 +11,9 @@
         <module>cloud-api-commons</module>
         <module>cloudalibaba-provider-payment</module>
         <module>cloudalibaba-provider-payment-slave</module>
+        <module>cloudalibaba-consumer-order-nacos</module>
+        <module>cloudalibaba-config-nacos-client</module>
+        <module>cloudalibaba-provider-payment-slave</module>
     </modules>
     <packaging>pom</packaging>
 

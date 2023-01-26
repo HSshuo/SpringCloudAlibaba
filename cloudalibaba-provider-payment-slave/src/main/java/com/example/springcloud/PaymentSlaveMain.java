@@ -6,8 +6,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * @author SHshuo
- * @data 2023/1/18--21:09
- * Nacos Server 使用外部运行
+ * @data 2023/1/20--11:47
  */
 @SpringBootApplication
 @EnableDiscoveryClient
