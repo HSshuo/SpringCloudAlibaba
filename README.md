@@ -70,3 +70,161 @@
 
 <br>
 <br>
+
+# Sentinel
+- [官网](https://github.com/alibaba/Sentinel)
+- 轻量级的流量控制、熔断降级 Java 库
+- Sentinel 是面向分布式、多语言异构化服务架构的流量治理组件，主要以流量为切入点，从流量路由、流量控制、流量整形、熔断降级、系统自适应过载保护、热点流量防护等多个维度来帮助开发者保障微服务的稳定性。
+- Sentinel 分为两部分：核心库（Java 客户端）不依赖任何框架/库，能够运行在 Java8 以上运行时环境，同时对 Dubbo、SpringCloud 框架也有较好的支持；控制台（DashBoard）主要负责管理推送规则、监控、管理机器信息等
+
+<br>
+
+#### 下载
+- 注意 docker 安装不行，一直空白界面，采用多种方式例如添加配置 client-ip 仍不行，错误一直超时。可能的原因是 sentinel和部署的微服务一定要在同一个内网中
+- [docker 安装参考](https://cloud.tencent.com/developer/article/2099895)
+- 最后使用本地运行 sentinel 解决，下载地址 [sentinel:1.8.6](https://github.com/alibaba/Sentinel/releases/tag/1.8.6)
+- 启动命令：java -jar sentinel-dashboard-1.8.6.jar --server.port=8081
+  ![alt](https://uploadfiles.nowcoder.com/images/20230131/630417200_1675164435619/D2B5CA33BD970F64A6301FA75AE2EB22)
+
+
+<br>
+
+#### 主要特性
+![alt](https://uploadfiles.nowcoder.com/images/20230126/630417200_1674718276718/D2B5CA33BD970F64A6301FA75AE2EB22)
+
+<br>
+
+#### 基本概念
+![alt](https://uploadfiles.nowcoder.com/images/20230126/630417200_1674719839247/D2B5CA33BD970F64A6301FA75AE2EB22)
+
+
+<br>
+<br>
+
+## 服务限流
+- Sentinel 的设计理念是让您自由选择控制的角度，并进行灵活组合，从而达到想要的效果
+- 流量控制有以下几个角度:
+  1. 资源的调用关系，例如资源的调用链路，资源和资源之间的关系
+  2. 运行指标，例如 QPS、线程池、系统负载等
+  3. 控制的效果，例如直接限流、冷启动、排队等
+
+<br>
+
+#### 流控规则
+- 资源名：唯一名称，默认请求路径
+- 针对来源：Sentinel 可以针对调用者进行限流，填写微服务名，默认 default（不区分来源）
+- 阈值类型/单机阈值
+  1. QPS（每秒的请求数量）：当调用该 api 的 QPS 达到阈值的时候，进行限流
+  2. 线程数：当调用该 api 的线程数达到阈值的时候，进行限流
+
+![alt](https://uploadfiles.nowcoder.com/images/20230201/630417200_1675220254201/D2B5CA33BD970F64A6301FA75AE2EB22)
+
+<br>
+
+#### 流控模式
+- 直接：api 达到限流条件时，直接限流
+- 关联：当关联的资源达到阈值时，就限流自己；可以通过 JMeter(并发)、PostMan(串行) 测试
+- 链路：只记录指定链路上的流量，指定资源从入口资源进来的流量，如果达到阈值，就进行限流（api 级别的针对来源）
+
+<br>
+
+#### 流控效果
+- 快速失败：直接失败，抛出异常
+
+![alt](https://uploadfiles.nowcoder.com/images/20230201/630417200_1675233468083/D2B5CA33BD970F64A6301FA75AE2EB22)
+
+- 预热(Warm Up)：**根据 codeFactor（冷加载因子，默认3）的值，系统最开始的初始阈值为 阈值/codeFactor ，然后经过预热时长才慢慢达到设置的 QPS 阈值**。应用于秒杀系统在开启的瞬间，会有很多流量上来，很有可能把系统打死，预热方式就是把为了保护系统，可慢慢的把流量放进来，慢慢的把阀值增长到设置的阀值
+
+- 排队等待：匀速排队，让请求以匀速的速度通过，阈值类型必须设置 QPS，否则无效；对应的算法是漏桶算法；主要用于处理间隔性突发的流量，例如消息队列。在某一秒有大量请求到来，而接下来的几秒则处于空闲状态，希望系统能过在接下来的空闲期间逐渐处理这些请求，而不是在第一秒直接拒绝多余的请求
+
+<br>
+
+#### 限流提示
+- sentinel系统默认的提示：Blocked by Sentinel (flow limiting)
+- 自定义提示：通过注解 @SentinelResource(value = "testHotKey", blockHandler = "dealHandler_testHotKey")，处理的是 sentinel 控制台配置的违规情况，有 blockHandler 方法兜底处理，**不会管运行时异常**
+
+<br>
+<br>
+
+## 降级规则
+- RT（平均响应时间，秒级）
+  1. 平均响应时间超出阈值 且 在 1s 内通过的请求 >= 5，两个条件同时满足后触发降级
+  2. 当资源被降级后，在接下来的降级时间窗口之内，对该资源的调用都自动熔断
+  3. RT 最大为4900，仍需更大需要修改 -Dcsp.sentinel.statistic.max.rt=XXX 生效
+- 异常比（秒级）：QPS（资源每秒请求量） >= 5 且 异常比例（每秒的）超过阈值时，触发降级；当资源被降级后，在接下来的降级时间窗口之内，对该资源的调用都自动熔断；在时间窗口期结束后，关闭降级
+- 异常数（分钟级）：异常数（每分钟）超过阈值时，触发降级；时间窗口期结束后，关闭降级
+
+<br>
+<br>
+
+## 热点规则
+- 热点参数限流会统计传入参数中的热点参数，并根据配置的限流阈值与模式，对包含热点参数的资源调用进行限流。热点参数限流可以看做是一种特殊的流量控制，仅对包含热点参数的资源调用生效
+- 例如：方法里面的第一个参数（指的是后台方法里的第一个参数而不是前端传入的第一个参数）只要 QPS 超过每秒1次，马上进行降级处理
+
+``` java
+/**
+     * sentinel系统默认的提示：Blocked by Sentinel (flow limiting)
+     * 自定义限流异常，testHotKey为资源名；blockHandler为fallback方法
+     *
+     * @SentinelResource 处理的是 sentinel 控制台配置的违规情况，有 blockHandler 方法配置的兜底处理
+     * 对于 RuntimeException 异常，例如 int age = 10 / 0，会走异常，@SentinelResource 注解不管
+     * @param p1
+     * @param p2
+     * @return
+     */
+    @GetMapping("/testHotKey")
+    @SentinelResource(value = "testHotKey", blockHandler = "dealHandler_testHotKey")
+    public String testHotKey(@RequestParam(value = "p1",required = false) String p1, @RequestParam(value = "p2",required = false) String p2){
+        return "------testHotKey";
+    }
+
+    public String dealHandler_testHotKey(String p1, String p2, BlockException exception) {
+        return "-----dealHandler_testHotKey";
+    }
+```
+- 参数例外项：某些时候我们期望参数是某个特殊值的时候，它的限流值和平时不一样
+
+![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/sentinel/%E7%83%AD%E7%82%B9%E8%A7%84%E5%88%99.png?raw=true)
+
+
+
+<br>
+<br>
+
+## 系统规则
+- [官网](https://github.com/alibaba/Sentinel/wiki/%E7%B3%BB%E7%BB%9F%E8%87%AA%E9%80%82%E5%BA%94%E9%99%90%E6%B5%81)
+- 系统保护规则是从应用级别的入口流量进行控制，从单台机器的 load、CPU 使用率、平均 RT、入口 QPS 和 并发线程数等几个维度监控应用指标，让系统尽可能跑在最大吞吐量的同时保证系统整体的稳定性
+- 系统保护规则是应用整体维度的，而不是资源维度的，并且仅对入口流量生效。入口流量指的是进入应用的流量，比如 web 服务或者 Dubbo 服务端接收的请求，都属于入口流量
+
+<br>
+
+#### 支持模式
+- Load 自适应(仅对 linux/Unix-like 机器生效)：系统的 load1 作为启发指标，进行自适应系统保护。当系统 load1 超过设定的启发值，且系统当前的并发线程数超过估算的系统容量时才会触发系统保护（BBR阶段）。系统容量由系统的 maxQPS * minRT 估算得出。设定参考值一般是 CPU cores * 2.5
+- CPU usage（1.5.0+版本）：当系统 CPU 使用率超过阈值即触发系统保护（取值范围 0.0-1.0），比较灵敏
+- 平均 RT：当单台机器上所有入口流量的平均 RT达到阈值即触发系统保护，单位是毫秒
+- 并发线程数：当单台机器上所有入口流量的并发线程数达到阈值即触发系统保护
+- 入口 QPS：当单台机器上所有入口流量的 QPS 达到阈值即触发系统保护
+
+
+<br>
+<br>
+
+## @SentinelResource 注解
+
+<br>
+
+#### 按照资源名称限流
+- @SentinelResource(value = "byResource", blockHandler = "handleException")，其中 value 属性对应的就是资源名
+  
+![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/sentinel/%E8%B5%84%E6%BA%90%E5%90%8D%E9%85%8D%E7%BD%AE%E9%99%90%E6%B5%81.png?raw=true)
+
+<br>
+
+#### 按照 URL 地址限流
+
+<br>
+
+#### 客户自定义限流处理逻辑
+
+
+

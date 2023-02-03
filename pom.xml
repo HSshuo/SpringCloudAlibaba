@@ -14,6 +14,9 @@
         <module>cloudalibaba-consumer-order-nacos</module>
         <module>cloudalibaba-config-nacos-client</module>
         <module>cloudalibaba-provider-payment-slave</module>
+        <module>cloudalibaba-sentinel-service</module>
+        <module>cloudalibaba-consumer-order-nacos-sentinel-ribbon</module>
+        <module>cloudalibaba-consumer-order-nacos-sentinel-openfeign</module>
     </modules>
     <packaging>pom</packaging>
 
