@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: 8085
 
 
 spring:
@@ -8,6 +8,7 @@ spring:
   cloud:
     nacos:
       discovery:
+        #Nacos服务注册中心地址
         server-addr: 47.95.211.172:8848
     sentinel:
       transport:
@@ -17,6 +18,12 @@ spring:
         port: 8719
 
 
-#消费者将要去访问的微服务名称(注册成功进nacos的微服务提供者)
-service-url:
-  nacos-user-service: http://nacos-payment-provider
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+# 激活Sentinel对Feign的支持
+feign:
+  sentinel:
+    enabled: true

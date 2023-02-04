@@ -68,8 +68,11 @@
 - 修改 conf 目录下的 application.propertites 文件
   ![alt](https://uploadfiles.nowcoder.com/images/20230122/630417200_1674366917506/D2B5CA33BD970F64A6301FA75AE2EB22)
 
+
 <br>
 <br>
+
+
 
 # Sentinel
 - [官网](https://github.com/alibaba/Sentinel)
@@ -96,6 +99,12 @@
 
 #### 基本概念
 ![alt](https://uploadfiles.nowcoder.com/images/20230126/630417200_1674719839247/D2B5CA33BD970F64A6301FA75AE2EB22)
+
+
+<br>
+
+#### 熔断框架比较
+![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/sentinel/%E6%A1%86%E6%9E%B6%E6%AF%94%E8%BE%83.png?raw=true)
 
 
 <br>
@@ -141,7 +150,7 @@
 
 #### 限流提示
 - sentinel系统默认的提示：Blocked by Sentinel (flow limiting)
-- 自定义提示：通过注解 @SentinelResource(value = "testHotKey", blockHandler = "dealHandler_testHotKey")，处理的是 sentinel 控制台配置的违规情况，有 blockHandler 方法兜底处理，**不会管运行时异常**
+- 自定义提示：通过注解 @SentinelResource(value = "testHotKey", blockHandler = "dealHandler_testHotKey")，处理的是 sentinel 控制台配置的违规情况，有 blockHandler 方法兜底处理，**不会管运行时异常**；fallback 属性管理运行时异常
 
 <br>
 <br>
@@ -210,21 +219,125 @@
 <br>
 
 ## @SentinelResource 注解
+- blockHandler 管理配置违规情况
+- fallback 管理运行时异常，也就是业务代码异常
+- 同时配置同时出问题，blockHandler > fallback
 
+``` java
+/**
+     * id = 4, 抛出运行时异常，会走 fallback 配置的方法，只负责业务异常
+     * blockHandler 负责在 sentinel 里面配置的降级限流
+     * 同时配置，blockHandler > fallback
+     * @param id
+     * @return
+     */
+    @RequestMapping("/consumer/fallback/{id}")
+    @SentinelResource(value = "fallback", blockHandler = "blockHandler", fallback = "blockFallBack")
+    public CommonResult<Payment> fallback(@PathVariable Long id) {
+        CommonResult<Payment> result = restTemplate.getForObject(SERVICE_URL + "/paymentSQL/" + id, CommonResult.class, id);
+
+        if (id == 4) {
+            throw new IllegalArgumentException("IllegalArgumentException,非法参数异常....");
+        } else if (result.getData() == null) {
+            throw new NullPointerException("NullPointerException,该ID没有对应记录,空指针异常");
+        }
+
+        return result;
+    }
+
+    /**
+     * 业务类异常
+     * @param id
+     * @param throwable
+     * @return
+     */
+    public CommonResult blockFallBack(@PathVariable Long id, Throwable throwable) {
+        return new CommonResult(4444, "运行时异常，fallback跳转，blockException: " + throwable.getMessage(), new Payment(id, "null"));
+    }
+
+
+    /**
+     * sentinel控制台配置异常
+     * @param id
+     * @param blockException
+     * @return
+     */
+    public CommonResult blockHandler(@PathVariable Long id, BlockException blockException) {
+        return new CommonResult<>(4445, "sentinel里面配置异常，blockHandler-sentinel限流, 无此流水: blockException  " + blockException.getMessage(), new Payment(id, "null"));
+    }
+```
 <br>
+
 
 #### 按照资源名称限流
 - @SentinelResource(value = "byResource", blockHandler = "handleException")，其中 value 属性对应的就是资源名
-  
-![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/sentinel/%E8%B5%84%E6%BA%90%E5%90%8D%E9%85%8D%E7%BD%AE%E9%99%90%E6%B5%81.png?raw=true)
+- 没有下划线 /
+
+![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/sentinel/%E6%8C%89%E7%85%A7%E8%B5%84%E6%BA%90%E5%90%8D%E9%85%8D%E7%BD%AE%E9%99%90%E6%B5%81.png?raw=true)
 
 <br>
 
 #### 按照 URL 地址限流
+- @GetMapping 对应URL，有下划线 /
+
+![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/sentinel/URL%E9%85%8D%E7%BD%AE%E9%99%90%E6%B5%81.png?raw=true)
 
 <br>
 
 #### 客户自定义限流处理逻辑
+- sentinel 控制台需要通过资源名配置，URL配置不起作用
+- @SentinelResource(value = "customerBlockHandler", blockHandlerClass = CustomerBlockHandler.class, blockHandler = "handleException2")；blockHandlerClass 对应的是类里面的具体方法 handleException2
+
+``` java
+/**
+     * 自定义通用的限流处理逻辑，sentinel 控制台需要通过资源名配置，URL配置不起作用
+     * blockHandlerClass = CustomerBlockHandler.class
+     * blockHandler = handleException2
+     * 上述配置：找CustomerBlockHandler类里的handleException2方法进行兜底处理
+     */
+    @GetMapping("/rateLimit/customerBlockHandler")
+    @SentinelResource(value = "customerBlockHandler",
+            blockHandlerClass = CustomerBlockHandler.class, blockHandler = "handleException2")
+    public CommonResult customerBlockHandler() {
+        return new CommonResult(200,"按客户自定义限流处理逻辑");
+    }
+
+
+/**
+ * @author SHshuo
+ * @data 2023/2/3--10:32
+ * 自定义通用的限流处理逻辑
+ */
+public class CustomerBlockHandler {
+
+    public static CommonResult handleException2(BlockException exception){
+        return new CommonResult(2022,"自定义的限流处理信息......handleException2");
+    }
+
+    public static CommonResult handleException(BlockException exception){
+        return new CommonResult(2022,"自定义的限流处理信息......handleException");
+    }
+}
+```
+
+
+<br>
+<br>
+
+## 持久化规则
+- 一旦我们重启应用，sentinel 规则将会消失，所以需要将配置规则进行持久化配置
+- 将限流配置规则持久化进 nacos 保存，需要在 nacos 中手写 JSON 配置，之后刷新 sentinel 控制台即出现配置规则
+
+
+<br>
+<br>
+
+## 总结
+- [项目地址](https://github.com/HSshuo/SpringCloudAlibaba)
+- 感觉主要针对 sentinel 控制台进行操作，Hystrix 主要通过代码来实现
+
+<br>
+<br>
 
 
 

@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class RateLimitController {
 
 
+    /**
+     * 按照资源名称限流，value属性就是资源名称，没有下划线 /
+     * @return
+     */
     @GetMapping("/byResource")
     @SentinelResource(value = "byResource", blockHandler = "handleException")
     public CommonResult byResource() {
@@ -27,14 +31,20 @@ public class RateLimitController {
         return new CommonResult(444,exception.getClass().getCanonicalName() + "服务不可用");
     }
 
+
+    /**
+     * 按照URL限流，@GetMapping 对应URL，有下划线 /
+     * @return
+     */
     @GetMapping("/rateLimit/byUrl")
     @SentinelResource(value = "byUrl")
     public CommonResult byUrl() {
         return new CommonResult(200,"按url限流测试OK", new Payment(2020L,"serial002"));
     }
 
+
     /**
-     * 自定义通用的限流处理逻辑，
+     * 自定义通用的限流处理逻辑，sentinel 控制台需要通过资源名配置，URL配置不起作用
      * blockHandlerClass = CustomerBlockHandler.class
      * blockHandler = handleException2
      * 上述配置：找CustomerBlockHandler类里的handleException2方法进行兜底处理
