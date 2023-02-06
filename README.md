@@ -339,5 +339,78 @@ public class CustomerBlockHandler {
 <br>
 <br>
 
+# Seata
+- [官网地址](http://seata.io/zh-cn/)
+- 一次业务操作需要跨多个数据源或者需要跨多个系统进行远程调用，就会产生分布式事务问题
+- Seata 是一款开源的分布式事务解决方案，致力于在微服务架构下提供高性能和简单易用的分布式事务服务。Seata 将为用户提供了 AT、TCC、SAGA 和 XA 事务模式，为用户打造一站式的分布式解决方案。
+
+
+<br>
+
+#### 分布式事务处理过程
+1. TM 向 TC 申请一个全局事务，全局事务创建成功并生成一个全局唯一的 XID
+2. XID 向微服务调用链路的上下文中传播
+3. RM 向 TC 注册分支事务，将其纳入 XID 对应全局事务的管辖
+4. TM 向 TC 发起针对 XID 的全局提交或者回滚决议
+5. TC 调度 XID 下管辖的全部分支事务完成提交或者回滚请求
+
+![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/seata/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E5%9B%BE.png?raw=true)
+
+<br>
+
+**名词介绍**
+- Transaction ID XID：全局唯一的事务ID
+- Transaction Coordinator（TC）：事务协调器，维护全局事务的运行状态，负责协调并驱动全局事务的提交或者回滚
+- Transaction Manager（TM）：控制全局事务的边界，负责开启一个全局事务，并最终发起全局提交或者全局回滚的决议
+- Resource Manager（RM）：控制分支事务，负责分支注册、状态汇报，并接收事务协调器的指令，驱动分支（本地）事务的提交和回滚
+
+
+<br>
+
+#### 下载
+- [官网地址](https://github.com/seata/seata/releases/tag/v1.6.1)
+- 此例子安装的是0.9版本，如果需要安装最新版请参考官网文档
+- 修改 store.mode 改成 db，之后再对应位置修改数据库属性
+- 修改 registry.type 改成 nacos，之后再对应位置修改 nacos 配置
+- 运行初始化 SQL，老版在 /seata/conf/db_store.db；新版在 seata/script/server/db/mysql.sql
+- 运行成功
+  ![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/seata/%E5%90%AF%E5%8A%A8%E6%88%90%E5%8A%9F.png?raw=true)
+
+<br>
+
+#### 代码演示
+- [项目地址](https://github.com/HSshuo/SpringCloudAlibaba)
+- [数据库SQL](https://www.aliyundrive.com/drive/folder/63df34a1dab0e7d8c5a74c4c8ca9315f72bcf7fc)
+- 项目架构介绍：下订单--减库存--扣余额--改订单状态
+
+![项目介绍](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/seata/%E9%A1%B9%E7%9B%AE%E9%80%BB%E8%BE%91.png?raw=true)
+
+<br>
+
+#### 问题
+- seata 版本问题，新版直接将配置注册到 nacos，通过 yml 进行配置；老版需要创建 file.conf、registry.conf文件
+  ![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/seata/%E9%A1%B9%E7%9B%AE%E9%85%8D%E7%BD%AE.png?raw=true)
+
+- 添加 @GlobalTransactional(name = "fsp-create-order", rollbackFor = Exception.class) 注解之后，会抛出问题（不加正常调用）
+  1. io.seata.rm.datasource.exec.LockConflictException: get global lock fail, xid:xxx, lockKeys:xxx
+  2. 解决： 参考[issues 2460](https://github.com/seata/seata/issues/2460) 将配置添加
+  3. [将数据库时区与当前时间一致](https://blog.csdn.net/m0_67695717/article/details/128345990)
+  4. 仍抛出 Global lock acquire failed，参考[issues 2555](https://github.com/seata/seata/issues/2555)、[issues 2735](https://github.com/seata/seata/issues/2735)暂时仍未解决
+``` yml
+feign:
+  httpclient:
+    connection-timeout: 60000
+    connection-timer-repeat: 3000
+
+ribbon:
+  ConnectTimeout: 60000 # 设置连接超时时间 default 2000
+  ReadTimeout: 60000   # 设置读取超时时间  default 5000
+  OkToRetryOnAllOperations: true # 对所有操作请求都进行重试  default false
+  MaxAutoRetriesNextServer: 20    # 切换实例的重试次数  default 1
+  MaxAutoRetries: 10     # 对当前实例的重试次数 default 0
+```
+
+<br>
+<br>
 
 

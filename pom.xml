@@ -17,6 +17,9 @@
         <module>cloudalibaba-sentinel-service</module>
         <module>cloudalibaba-consumer-order-nacos-sentinel-ribbon</module>
         <module>cloudalibaba-consumer-order-nacos-sentinel-openfeign</module>
+        <module>cloudalibaba-consumer-order-seata</module>
+        <module>cloudalibaba-consumer-storage-seata</module>
+        <module>cloudalibaba-consumer-account-seata</module>
     </modules>
     <packaging>pom</packaging>
 
