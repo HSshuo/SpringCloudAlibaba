@@ -351,8 +351,10 @@ public class CustomerBlockHandler {
 1. TM 向 TC 申请一个全局事务，全局事务创建成功并生成一个全局唯一的 XID
 2. XID 向微服务调用链路的上下文中传播
 3. RM 向 TC 注册分支事务，将其纳入 XID 对应全局事务的管辖
-4. TM 向 TC 发起针对 XID 的全局提交或者回滚决议
-5. TC 调度 XID 下管辖的全部分支事务完成提交或者回滚请求
+4. 一阶段事务完成
+5. TM 向 TC 发起针对 XID 的全局提交或者回滚决议
+6. TC 调度 XID 下管辖的全部分支事务完成提交或者回滚请求
+7. 二阶段事务完成
 
 ![alt](https://github.com/HSshuo/PictureBed/blob/main/springcloudAlibaba/seata/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B%E5%9B%BE.png?raw=true)
 
